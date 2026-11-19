@@ -1,0 +1,6 @@
+bin/
+obj/
+.vs/
+*.user
+firmware/cyd-monitor/build/
+tools/*.exe

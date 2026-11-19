@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Everything except capture is plain P/Invoke — monitors, display modes,
+    cursor compositing and touch injection all go straight to Win32.
+
+    Capture is the exception, and the two Vortice packages are there for a
+    measured reason. The original GDI implementation turned out to be
+    vsync-locked: the "benchcapture" mode showed a 1x1 BitBlt from the screen DC
+    costing 16.66 ms (exactly one refresh interval at 60 Hz) and a full-screen
+    read costing 33.3 ms, which is the entire frame budget at 30 fps with
+    nothing left for encoding or sending. No choice of stretch mode or
+    intermediate buffer moved that number, because the cost is a wait, not
+    work. DXGI Desktop Duplication has no such lock, hands over a GPU texture
+    the shader can downscale for free, and returns only the 320x240 result to
+    system memory. The GDI path is kept as a fallback, since duplication can
+    be refused outright in some sessions.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>CydMonitor</RootNamespace>
+    <AssemblyName>cyd-monitor</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The pixel pipeline walks 300k+ pixels per frame; bounds-checked
+         indexing through that is the difference between 0.4 ms and 3 ms. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <!-- Every buffer in the hot path is allocated once and reused, so the
+         workstation GC never has anything to collect mid-frame. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <!-- UIAutomationClient, for pressing SDR Oxide's scanner buttons (OxideUi.cs). -->
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
+    <EmbeddedResource Include="skaner.html" LogicalName="skaner.html" />
+  </ItemGroup>
+
+</Project>

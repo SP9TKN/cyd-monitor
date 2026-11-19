@@ -1,0 +1,94 @@
+{
+  "Author": "SP9TKN",
+  "Name": "SDR Oxide",
+  "Description": "Ulanzi Dial jako panel SDR Oxide: wybor radia, VFO, glosnosc, skan.",
+  "Icon": "images/oxide.svg",
+  "Version": "1.0.0",
+  "Category": "SDR Oxide",
+  "CategoryIcon": "images/oxide.svg",
+  "CodePath": "plugin/app.html",
+  "Type": "JavaScript",
+  "SupportedInMultiActions": false,
+  "PrivateAPI": true,
+  "UUID": "com.ulanzi.ulanzistudio.sdroxide",
+  "OS": [
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Software": {
+    "MinVersion": "2.1.4"
+  },
+  "Actions": [
+    {
+      "Name": "Radio 2 m",
+      "Icon": "images/oxide.svg",
+      "States": [ { "Name": "2 m", "Image": "images/oxide.svg" } ],
+      "Controllers": [ "Keypad" ],
+      "Tooltip": "Wybiera SDR 2M",
+      "UUID": "com.ulanzi.ulanzistudio.sdroxide.radio2m",
+      "SupportedInMultiActions": false
+    },
+    {
+      "Name": "Radio 70 cm",
+      "Icon": "images/oxide.svg",
+      "States": [ { "Name": "70 cm", "Image": "images/oxide.svg" } ],
+      "Controllers": [ "Keypad" ],
+      "Tooltip": "Wybiera SDR 70CM",
+      "UUID": "com.ulanzi.ulanzistudio.sdroxide.radio70cm",
+      "SupportedInMultiActions": false
+    },
+    {
+      "Name": "Skan",
+      "Icon": "images/oxide.svg",
+      "States": [ { "Name": "Skan", "Image": "images/oxide.svg" } ],
+      "Controllers": [ "Keypad" ],
+      "Tooltip": "Zatrzymuje albo wznawia skan wybranego radia",
+      "UUID": "com.ulanzi.ulanzistudio.sdroxide.scan",
+      "SupportedInMultiActions": false
+    },
+    {
+      "Name": "Przywolaj Oxide",
+      "Icon": "images/oxide.svg",
+      "States": [ { "Name": "Oxide", "Image": "images/oxide.svg" } ],
+      "Controllers": [ "Keypad" ],
+      "Tooltip": "Pokazuje okno SDR Oxide, w razie potrzeby uruchamia program",
+      "UUID": "com.ulanzi.ulanzistudio.sdroxide.show",
+      "SupportedInMultiActions": false
+    },
+    {
+      "Name": "Schowaj Oxide",
+      "Icon": "images/oxide.svg",
+      "States": [ { "Name": "Pulpit", "Image": "images/oxide.svg" } ],
+      "Controllers": [ "Keypad" ],
+      "Tooltip": "Minimalizuje SDR Oxide i wraca do tego, co bylo pod spodem",
+      "UUID": "com.ulanzi.ulanzistudio.sdroxide.hide",
+      "SupportedInMultiActions": false
+    },
+    {
+      "Name": "Glosnosc radia +",
+      "Icon": "images/oxide.svg",
+      "States": [ { "Name": "Vol+", "Image": "images/oxide.svg" } ],
+      "Controllers": [ "Keypad" ],
+      "Tooltip": "W Oxide glosnosc wybranego radia w gore, poza Oxide Ctrl+Y",
+      "UUID": "com.ulanzi.ulanzistudio.sdroxide.volup",
+      "SupportedInMultiActions": false
+    },
+    {
+      "Name": "Glosnosc radia -",
+      "Icon": "images/oxide.svg",
+      "States": [ { "Name": "Vol-", "Image": "images/oxide.svg" } ],
+      "Controllers": [ "Keypad" ],
+      "Tooltip": "W Oxide glosnosc wybranego radia w dol, poza Oxide Ctrl+Z",
+      "UUID": "com.ulanzi.ulanzistudio.sdroxide.voldown",
+      "SupportedInMultiActions": false
+    },
+    {
+      "Name": "VFO",
+      "Icon": "images/oxide.svg",
+      "States": [ { "Name": "VFO", "Image": "images/oxide.svg" } ],
+      "Controllers": [ "Encoder" ],
+      "Tooltip": "W Oxide: krecenie stroi wybrane radio, klik zmienia krok, wcisniete i krecone zoomuje waterfall. Poza Oxide glosnosc Windows",
+      "UUID": "com.ulanzi.ulanzistudio.sdroxide.vfo",
+      "SupportedInMultiActions": false
+    }
+  ]
+}

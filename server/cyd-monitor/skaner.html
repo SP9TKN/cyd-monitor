@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skaner SDR</title>
+<style>
+:root{color-scheme:dark;--tlo:#0b0d10;--karta:#15181d;--linia:#2a2f37;--tekst:#e8eaed;--szary:#8b929c;
+  --przycisk:#6b6b6b;--zielony:#35d05a;--czerwony:#ff3b30;--cisza:#700000;--akcent:#2aa7d6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--tlo);color:var(--tekst);font:15px system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--linia)}
+h1{font-size:17px;margin:0 auto 0 0}
+.grupa{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.grupa>span{color:var(--szary);font-size:12px;margin-right:2px}
+button,select{font:inherit;color:#fff;background:var(--przycisk);border:0;border-radius:6px;padding:7px 11px;min-height:36px;cursor:pointer}
+select{background:#2a2f37;max-width:100%}
+button:hover{filter:brightness(1.2)}
+button:active{filter:brightness(.8)}
+button:disabled{opacity:.4;cursor:default}
+button.wl{background:var(--akcent)}
+button.cisza{background:var(--cisza)}
+/* On a muted radio's dark red block the same dark red button disappeared. */
+.radio button.wycisz.cisza{background:#e53935;font-weight:600;box-shadow:inset 0 0 0 1px #ffcdd2}
+#blad{display:none;background:var(--cisza);padding:8px 16px}
+main{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px;padding:12px 16px}
+.radio{background:var(--karta);border:1px solid var(--linia);border-radius:10px;padding:12px;min-width:0;transition:background .2s}
+.radio.cisza{background:var(--cisza)}
+.gora{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--szary);font-size:13px}
+.znacznik{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--linia);color:var(--tekst)}
+.znacznik.tx{background:var(--zielony);color:#000}
+.nazwa{font-size:40px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:46px}
+.radio:not(.tx) .nazwa{color:#aeb4bd}
+.opis{color:var(--szary);font-size:13px;min-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dane{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:2px 0 6px;font-variant-numeric:tabular-nums}
+.czest{color:var(--czerwony);font-size:22px;font-weight:600}
+.radio.cisza .czest{color:#ff8a80}
+.dbm{color:var(--zielony);font-size:18px;font-weight:600}
+.pasek{height:6px;background:#000;border-radius:3px;overflow:hidden;margin-bottom:10px}
+.pasek i{display:block;height:100%;width:0;background:var(--zielony)}
+.rzad{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.rzad input[type=range]{flex:1;min-width:90px;accent-color:var(--akcent)}
+.etykieta{color:var(--szary);font-size:12px}
+.wartosc{font-size:13px;min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+.czesc{width:112px;font:inherit;color:#fff;background:#2a2f37;border:1px solid var(--linia);border-radius:6px;padding:6px 8px;min-height:36px}
+.rzad select{padding:7px 6px}
+.rzad label{display:flex;gap:4px;align-items:center;color:var(--szary);font-size:12px}
+.suwakrzad{display:grid;grid-template-columns:34px minmax(0,1fr) 56px 112px;gap:8px;align-items:center;margin-bottom:8px}
+.suwakrzad input[type=range]{width:100%;margin:0;accent-color:var(--akcent)}
+.suwakrzad button{width:100%}
+.minus,.plus{touch-action:none;user-select:none;-webkit-user-select:none}
+#pip{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+#pip.czeka{position:fixed;inset:0;width:100vw;height:100vh;opacity:0;pointer-events:none;z-index:-1}
+/* The page shrunk to a floating window: the radios' video takes it. */
+@media (max-height:320px){#pip.czeka{opacity:1;z-index:99;background:#000;object-fit:contain}}
+.widmo{position:relative;margin-bottom:8px}
+.suwaki{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:6px 0}
+.suwak{min-width:0}
+.suwak div{display:flex;justify-content:space-between;align-items:baseline}
+.suwak input{display:block;width:100%;margin:2px 0 0;accent-color:var(--akcent)}
+canvas{display:block;width:100%;height:220px;background:#000;border-radius:6px}
+.podzialka{display:flex;justify-content:space-between;color:var(--szary);font-size:11px;font-variant-numeric:tabular-nums;margin-top:2px}
+.brak{position:absolute;inset:0;display:none;align-items:center;justify-content:center;color:var(--szary);text-align:center;padding:12px}
+.pasmo{position:absolute;top:0;height:220px;display:none;pointer-events:none;background:rgba(42,167,214,.14);border-left:1px solid rgba(42,167,214,.7);border-right:1px solid rgba(42,167,214,.7)}
+.kanaly{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:4px;max-height:260px;overflow:auto;margin-top:8px}
+.kanal{display:block;min-height:0;padding:4px 6px;border-radius:5px;background:#1f2329;text-align:left;font-size:13px;overflow:hidden;transition:background 15s ease-out}
+.kanal b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kanal small{color:var(--szary);font-size:11px;font-variant-numeric:tabular-nums}
+.kanal.pomin{opacity:.4}
+.kanal.teraz{outline:2px solid var(--akcent);outline-offset:-2px}
+.kanal.tx{background:var(--zielony);color:#000;transition:none}
+.kanal.tx small{color:#143}
+.kanal.slyszany{background:#17492a}
+/* The I/Q buffer strip above a card's spectrum: Oxide's buffer playback, steered from here. */
+.bufor{margin:6px 0 4px}
+.bpasek{width:100%;text-align:left;background:#3a2a10;color:#ffb74d;font-weight:600;letter-spacing:.5px}
+.bufor.otwarty .bpasek{background:#ffb74d;color:#000}
+.bster{background:#1b1710;border:1px solid #5a4318;border-top:0;border-radius:0 0 6px 6px;padding:8px}
+.bster[hidden]{display:none}
+.bster .rzad{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}
+.bczas{font-size:20px;font-weight:600;color:#ffb74d}
+.bza{color:var(--szary);font-size:13px}
+.bczest{color:var(--czerwony);font-size:15px;font-weight:600}
+.blista{position:relative;max-height:30vh;overflow:auto;margin-top:6px;border-top:1px solid var(--linia)}
+.blista div{display:flex;gap:10px;padding:6px 4px;border-bottom:1px solid var(--linia);cursor:pointer;font-size:14px}
+.blista div:hover{background:#2a2316}
+
+.blista div.wskazany{outline:2px solid #ffb74d;outline-offset:-2px}
+.blista b{min-width:68px}
+.blista span{color:var(--szary);min-width:34px}
+.blista i{font-style:normal}
+.bnaglowek{color:var(--szary);font-size:12px;margin-top:6px}
+.bos{position:relative;margin:6px 0 2px}
+.bosc{display:block;width:100%;height:52px;background:#000;border-radius:6px;cursor:pointer;touch-action:none}
+.bosl{display:flex;justify-content:space-between;color:var(--szary);font-size:12px;margin-top:2px}
+.bpod{color:#ffe0a0;font-size:13px;min-height:18px}
+</style></head><body>
+<header>
+  <h1>Skaner SDR</h1>
+  <div class="grupa"><span>Ekran CYD</span><button id="ekran-lustro">Lustro</button><button id="ekran-skaner">Skaner</button></div>
+  <div class="grupa"><span>Oxide</span><button id="pokaz-0">Pokaż 2 m</button><button id="pokaz-1">Pokaż 70 cm</button><button id="schowaj">Schowaj</button><button id="program">Uruchom</button></div>
+  <div class="grupa"><span>Dźwięk</span><button id="cichy" title="Wycisza tylko Oxide w mikserze głośności Windows: skanera nie słychać w domu, inne dźwięki komputera i dźwięk tutaj bez zmian">Cichy dom</button><button id="sluchaj" title="Gra w tej przeglądarce, także w tle i przy zgaszonym ekranie telefonu. Głośniki w domu bez zmian">Słuchaj tutaj</button><button id="karta" title="Wycisza w Windows całą kartę, na której gra Oxide. Dźwięk w przeglądarce bez zmian">MUTE karta</button></div>
+  <div class="grupa"><button id="okienko" title="Po zminimalizowaniu przeglądarki pokazuje oba radia w pływającym okienku nad innymi aplikacjami. Strona przechodzi wtedy na pełny ekran; drugie dotknięcie wyłącza">Okienko</button><button id="widmo">Widmo</button></div>
+  <video id="pip" muted playsinline></video>
+</header>
+<div id="blad">Brak połączenia z serwerem, ponawiam…</div>
+<main id="radia"></main>
+<script>
+const $ = id => document.getElementById(id);
+const post = sciezka => fetch(sciezka, { method: 'POST' }).catch(() => {});
+// One step at a press, and held past 0.4 s a step every 125 ms until it is let go. A finger
+// on a phone the same as a mouse; the keyboard still gets one step a press.
+function powtarzaj(przycisk, krok) {
+  let czekaj = 0, co = 0;
+  const stop = () => { clearTimeout(czekaj); clearInterval(co); czekaj = co = 0; };
+  przycisk.onpointerdown = e => {
+    if (e.button !== 0) return;
+    przycisk.setPointerCapture(e.pointerId);
+    stop();
+    krok();
+    czekaj = setTimeout(() => { co = setInterval(krok, 125); }, 400);
+  };
+  przycisk.onpointerup = przycisk.onpointercancel = przycisk.onlostpointercapture = stop;
+  przycisk.oncontextmenu = e => e.preventDefault();
+  przycisk.onclick = e => { if (e.detail === 0) krok(); };
+}
+function zapisane(klucz, domyslnie) { try { return localStorage.getItem(klucz) ?? domyslnie; } catch { return domyslnie; } }
+function zapisz(klucz, v) { try { localStorage.setItem(klucz, v); } catch {} }
+
+const mhz = hz => {
+  const m = Math.floor(hz / 1e6), f = String(hz % 1e6).padStart(6, '0').replace(/0+$/, '').padEnd(3, '0');
+  return `${m}.${f} MHz`;
+};
+const krotka = n => { const w = n.trim().split(/\s+/); return w[0] === 'SX' && w[1] ? `SX ${w[1]}` : w[0]; };
+const TRYB = { FM: 'FM', AM: 'AM', AMS: 'SAM', WFM: 'WFM', USB: 'USB', LSB: 'LSB', CW: 'CW' };
+const STAN = { off: 'WYŁĄCZONY', skan: 'SKANUJE', stop: 'ZATRZYMANY', tx: 'TRANSMISJA' };
+
+// A palette for the waterfall: black, blue, cyan, yellow, red.
+const PALETA = (() => {
+  const punkty = [[0, 0, 0], [0, 0, 120], [0, 170, 220], [240, 230, 40], [255, 40, 20]], lut = [];
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255 * (punkty.length - 1), a = Math.min(Math.floor(t), punkty.length - 2), u = t - a;
+    lut.push(punkty[a].map((v, k) => Math.round(v + (punkty[a + 1][k] - v) * u)));
+  }
+  return lut;
+})();
+const WIDMO_H = 80;
+// A byte of the spectrum against dB of full scale: 0 is -150 dB, 255 is 0 dB.
+const NA_BAJT = 255 / 150, ZAKRES_AUTO = 45;
+const SZEROKOSCI = [1000, 5000, 7000, 10000, 12500, 15000, 25000, 100000];
+const KROKI = [[1000, '1 kHz'], [5000, '5 kHz'], [10000, '10 kHz'], [12500, '12,5 kHz'], [25000, '25 kHz'], [100000, '100 kHz'], [1000000, '1 MHz']];
+
+class Radio {
+  constructor(nr) {
+    this.nr = nr;
+    this.lista = [];
+    this.poId = new Map();
+    this.poHz = new Map();
+    this.teraz = null;
+    this.przesuwam = 0;
+    this.podloga = null;
+    this.ostatnieWidmo = 0;
+    const el = this.el = document.createElement('section');
+    el.className = 'radio';
+    el.innerHTML = `
+      <div class="gora"><span class="tytul">Radio ${nr + 1}</span><span class="znacznik">–</span></div>
+      <div class="nazwa">–</div><div class="opis"></div>
+      <div class="dane"><span class="czest"></span><span class="dbm"></span></div>
+      <div class="pasek"><i></i></div>
+      <div class="rzad">
+        <button data-skan="start">START</button><button data-skan="stop">STOP</button><button data-skan="next">NEXT</button>
+        <button class="poprz" title="Poprzedni kanał">◀</button><button class="nast" title="Następny kanał">▶</button>
+      </div>
+      <div class="rzad" title="Wpisanie częstotliwości kończy skanowanie na tym radiu">
+        <form class="wpis" style="display:contents"><input class="czesc" inputmode="decimal" autocomplete="off" placeholder="MHz" aria-label="Częstotliwość w MHz"><button>Ustaw</button></form>
+      </div>
+      <div class="rzad" title="Przesunięcie kończy skanowanie na tym radiu">
+        <select class="krok" aria-label="Krok"></select><button class="minus" aria-label="Niżej">−</button><button class="plus" aria-label="Wyżej">+</button>
+      </div>
+      <div class="suwakrzad"><span class="etykieta">VOL</span><input type="range" min="0" max="1" step="0.01" class="glos" aria-label="Głośność"><span class="wartosc glosw"></span><button class="wycisz">Dźwięk</button></div>
+      <div class="suwakrzad nowe" title="Blokada szumów tego radia, w trybie, w którym teraz jest"><span class="etykieta">SQL</span><input type="range" min="-150" max="0" step="1" class="sql" aria-label="Blokada szumów"><span class="wartosc sqlw"></span><span></span></div>
+      <div class="rzad nowe" title="Działa do następnego zatrzymania skanera, bo kanał przywraca swój filtr"><span class="etykieta">BW</span><button class="bwm" aria-label="Węziej">−</button><span class="wartosc bww"></span><button class="bwp" aria-label="Szerzej">+</button></div>
+      <div class="bufor"><button class="bpasek" title="Odsłuch nagranego sygnału tego radia, jak w Oxide. Odtwarzanie działa tylko, gdy belka jest rozwinięta; wodospad pokazuje wtedy bufor">⏪ BUFOR I/Q ▸</button>
+        <div class="bster" hidden>
+          <div class="rzad"><span class="bczas">–</span><span class="bza"></span><span class="bczest"></span></div>
+          <div class="rzad"><button data-k="prev" title="Poprzednia transmisja albo początek obecnej">⏮ Poprz.</button><button data-k="back">−10 s</button><button class="bpauza">⏸ Pauza</button><button data-k="fwd">+10 s</button><button data-k="next" title="Następna transmisja">Nast. ⏭</button><button data-k="live" title="Z powrotem do najnowszego sygnału">NA ŻYWO</button></div>
+          <div class="rzad"><span class="etykieta">Oś</span><select class="bzakres" aria-label="Zakres osi czasu"><option value="0">cały bufor</option><option value="3600">1 h</option><option value="600">10 min</option><option value="120">2 min</option></select><span class="bpod"></span></div>
+          <div class="bos"><canvas class="bosc" title="Przeciągnij albo kliknij, aby przewinąć; transmisje zaznaczone kolorem kanału"></canvas><div class="bosl"><span class="bod"></span><span class="bdo"></span></div></div>
+          <div class="bnaglowek">TRANSMISJE NA OSI (najnowsze u góry, kliknij, aby odtworzyć)</div>
+          <div class="blista"></div>
+        </div></div>
+      <div class="widmo"><canvas width="512" height="220"></canvas><div class="pasmo" title="Szerokość filtra (BW)"></div><div class="brak"></div><div class="podzialka"><span class="od"></span><span class="srodek"></span><span class="do"></span></div>
+        <div class="suwaki">
+          <div class="suwak"><div><span class="etykieta">Podłoga</span><span class="wartosc podlw"></span></div><input type="range" min="-150" max="-20" step="1" class="podl"></div>
+          <div class="suwak"><div><span class="etykieta">Rozpiętość</span><span class="wartosc rozpw"></span></div><input type="range" min="10" max="120" step="1" class="rozp"></div>
+        </div>
+        <div class="rzad" style="justify-content:space-between"><label><input type="checkbox" class="auto"> Auto</label>
+          <select class="powiek" aria-label="Szerokość widma"><option value="1">Całe okno</option><option value="2">1/2</option><option value="4">1/4</option></select></div></div>
+      <select class="folder" aria-label="Lista kanałów"></select>
+      <div class="kanaly"></div>`;
+    $('radia').append(el);
+    const q = s => el.querySelector(s);
+    Object.assign(this, { tytul: q('.tytul'), znacznik: q('.znacznik'), nazwa: q('.nazwa'), opis: q('.opis'), czest: q('.czest'), dbm: q('.dbm'),
+      pasek: q('.pasek i'), glos: q('.glos'), glosw: q('.glosw'), pasmo: q('.pasmo'), wycisz: q('.wycisz'), folder: q('.folder'), kanaly: q('.kanaly'), widmoEl: q('.widmo'), brak: q('.brak'),
+      canvas: q('.widmo canvas'), od: q('.od'), srodek: q('.srodek'), do: q('.do'), czesc: q('.czesc'), krok: q('.krok'), sql: q('.sql'), sqlw: q('.sqlw'),
+      bww: q('.bww'), auto: q('.auto'), podl: q('.podl'), podlw: q('.podlw'), rozp: q('.rozp'), rozpw: q('.rozpw'), powiek: q('.powiek'),
+      bufor: q('.bufor'), bpasek: q('.bpasek'), bster: q('.bster'), bczas: q('.bczas'), bza: q('.bza'), bczest: q('.bczest'), blista: q('.blista'), bpauza: q('.bpauza'),
+      bzakres: q('.bzakres'), bpod: q('.bpod'), bosc: q('.bosc'), bod: q('.bod'), bdo: q('.bdo') });
+    this.nowe = el.querySelectorAll('.nowe');
+    this.bw = 0;
+    this.przesuwamSql = 0;
+
+    for (const [v, t] of KROKI) this.krok.add(new Option(t, v));
+    this.krok.value = zapisane(`krok${nr}`, '12500');
+    this.krok.onchange = () => zapisz(`krok${nr}`, this.krok.value);
+    powtarzaj(q('.minus'), () => post(`/api/krok/${nr}/-1/${this.krok.value}`));
+    powtarzaj(q('.plus'), () => post(`/api/krok/${nr}/1/${this.krok.value}`));
+    q('.wpis').onsubmit = e => {
+      e.preventDefault();
+      const mhz = parseFloat(this.czesc.value.replace(',', '.'));
+      if (!(mhz >= 0.1 && mhz <= 1766)) { this.czesc.select(); return; }
+      post(`/api/czest/${nr}/${Math.round(mhz * 1e6)}`);
+      this.czesc.value = '';
+      this.czesc.blur();
+    };
+    let sqlWysylam = 0;
+    this.sql.oninput = () => {
+      this.przesuwamSql = Date.now();
+      this.sqlw.textContent = `${this.sql.value} dB`;
+      if (sqlWysylam) return;
+      sqlWysylam = setTimeout(() => { sqlWysylam = 0; post(`/api/sql/${nr}/${this.sql.value}`); }, 120);
+    };
+    q('.bwm').onclick = () => { const w = SZEROKOSCI.filter(x => x < this.bw).pop(); if (w) post(`/api/bw/${nr}/${w}`); };
+    q('.bwp').onclick = () => { const w = SZEROKOSCI.find(x => x > this.bw); if (this.bw && w) post(`/api/bw/${nr}/${w}`); };
+
+    const widok = () => {
+      this.podl.disabled = this.rozp.disabled = this.auto.checked;
+      this.podlw.textContent = `${this.podl.value} dB`;
+      this.rozpw.textContent = `${this.rozp.value} dB`;
+      zapisz(`widok${nr}`, JSON.stringify({ a: this.auto.checked, p: this.podl.value, r: this.rozp.value, z: this.powiek.value }));
+    };
+    let w = {};
+    try { w = JSON.parse(zapisane(`widok${nr}`, '{}')); } catch {}
+    this.auto.checked = w.a ?? true;
+    this.podl.value = w.p ?? -110;
+    this.rozp.value = w.r ?? ZAKRES_AUTO;
+    this.powiek.value = w.z ?? '1';
+    for (const e of [this.auto, this.podl, this.rozp, this.powiek]) e.oninput = widok;
+    widok();
+    this.ctx = this.canvas.getContext('2d');
+    this.ctx.fillRect(0, 0, 512, 220);
+    this.wiersz = this.ctx.createImageData(512, 1);
+
+    el.querySelectorAll('[data-skan]').forEach(b => b.onclick = () => post(`/api/skan/${nr}/${b.dataset.skan}`));
+    q('.poprz').onclick = () => this.obok(-1);
+    q('.nast').onclick = () => this.obok(1);
+    this.wycisz.onclick = () => post(`/api/wycisz/${nr}`);
+    let wysylam = 0;
+    this.glos.oninput = () => {
+      this.przesuwam = Date.now();
+      this.glosw.textContent = `${Math.round(this.glos.value * 100)}%`;
+      if (wysylam) return;
+      wysylam = setTimeout(() => { wysylam = 0; post(`/api/glos/${nr}/${this.glos.value}`); }, 120);
+    };
+    this.folder.onchange = () => { zapisz(`folder${nr}`, this.folder.value); this.buduj(); };
+  }
+
+  lista_kanalow(dane) {
+    this.dane = dane;
+    const r = dane.radia.find(x => x.id === this.nr);
+    // Not on the list: switched off in Oxide, so the card goes.
+    this.el.style.display = r ? '' : 'none';
+    if (!r) return;
+    this.r = r;
+    this.pomijane = new Set(r.pomijane);
+    this.tytul.textContent = r.nazwa;
+    const wybrany = zapisane(`folder${this.nr}`, 'skan');
+    this.folder.replaceChildren();
+    const dodaj = (v, t) => this.folder.add(new Option(t, v));
+    dodaj('skan', 'Lista skanera');
+    dodaj('wszystkie', 'Wszystkie kanały');
+    for (const f of dane.foldery) dodaj(String(f.id), f.name);
+    this.folder.value = [...this.folder.options].some(o => o.value === wybrany) ? wybrany : 'skan';
+    this.buduj();
+  }
+
+  buduj() {
+    const { kanaly, } = this.dane, skan = this.r.foldery, v = this.folder.value;
+    this.lista = kanaly.filter(k => v === 'wszystkie' ? true
+      : v === 'skan' ? (skan.length === 0 || skan.includes(k.folder)) : String(k.folder) === v);
+    this.poId.clear();
+    this.poHz.clear();
+    this.teraz = null;
+    this.kanaly.replaceChildren(...this.lista.map(k => {
+      const b = document.createElement('button');
+      b.className = 'kanal' + (this.pomijane.has(k.id) ? ' pomin' : '');
+      b.title = `${k.nazwa} · ${mhz(k.hz)} · ${k.tryb}. Kliknięcie dołącza kanał do skanowania albo go z niego wyłącza (wyszarzony = pomijany) i ustawia na nim radio, co kończy skanowanie.`;
+      b.innerHTML = '<b></b><small></small>';
+      b.firstChild.textContent = krotka(k.nazwa);
+      b.lastChild.textContent = (k.hz / 1e6).toFixed(k.hz % 1000 ? 4 : 3);
+      b.onclick = () => {
+        // Shown at once; the list read back after Oxide saves the change confirms it.
+        if (this.pomijane.has(k.id)) this.pomijane.delete(k.id); else this.pomijane.add(k.id);
+        b.classList.toggle('pomin', this.pomijane.has(k.id));
+        post(`/api/pomin/${this.nr}/${k.id}`);
+      };
+      k.el = b;
+      this.poId.set(k.id, k);
+      if (!this.poHz.has(k.hz)) this.poHz.set(k.hz, k);
+      return b;
+    }));
+  }
+
+  // By the channel Oxide says it is on, and by frequency where it doesn't say.
+  // Oxide keeps the last recalled memory after the VFO has moved off it.
+  znajdz(s) {
+    const k = this.poId.get(s.mem);
+    return k && Math.abs(k.hz - s.hz) <= 100 ? k : this.poHz.get(s.hz) ?? null;
+  }
+
+  obok(o) {
+    if (!this.lista.length) return;
+    const i = this.teraz ? this.lista.indexOf(this.teraz) : (o > 0 ? -1 : 0);
+    post(`/api/kanal/${this.nr}/${this.lista[(i + o + this.lista.length) % this.lista.length].id}`);
+  }
+
+  stan(s) {
+    const tx = s.stan === 'tx', off = s.stan === 'off';
+    this.el.classList.toggle('tx', tx);
+    this.el.classList.toggle('cisza', s.cisza && !off);
+    this.znacznik.textContent = STAN[s.stan];
+    this.znacznik.classList.toggle('tx', tx);
+    const k = this.znajdz(s);
+    this.nazwa.textContent = off ? 'OXIDE WYŁ.' : k ? krotka(k.nazwa) : mhz(s.hz).replace(' MHz', '');
+    this.opis.textContent = off ? '' : k ? k.nazwa : 'VFO';
+    this.czest.textContent = off ? '' : `${mhz(s.hz)} ${TRYB[s.tryb] ?? ''}`;
+    this.dbm.textContent = off ? '' : `${s.dbm} dBm`;
+    this.pasek.style.width = off ? 0 : Math.max(0, Math.min(100, s.dbm + 130)) + '%';
+    if (Date.now() - this.przesuwam > 1500) this.glos.value = s.glos;
+    this.glosw.textContent = off ? '' : `${Math.round(this.glos.value * 100)}%`;
+    this.glos.disabled = off;
+    this.wycisz.textContent = s.cisza ? 'Dźwięk wył.' : 'Dźwięk wł.';
+    this.wycisz.classList.toggle('cisza', s.cisza);
+    this.czesc.placeholder = off ? 'MHz' : (s.hz / 1e6).toFixed(4);
+    // Only an Oxide that knows these commands reports its squelch.
+    for (const n of this.nowe) n.style.display = !off && s.sql === null ? 'none' : '';
+    this.bw = s.bw;
+    this.tryb = s.tryb;
+    this.bww.textContent = off ? '' : `${(s.bw / 1000).toFixed(1)} kHz`;
+    if (s.sql !== null && Date.now() - this.przesuwamSql > 1500) {
+      this.sql.value = s.sql;
+      this.sqlw.textContent = `${Math.round(s.sql)} dB`;
+    }
+    this.sql.disabled = off;
+
+    if (k !== this.teraz) {
+      this.teraz?.el.classList.remove('teraz', 'tx');
+      this.teraz = k;
+      k?.el.classList.add('teraz');
+    }
+    if (k) {
+      if (tx) k.el.classList.add('tx', 'slyszany');
+      else if (k.el.classList.contains('tx')) k.el.classList.remove('tx');
+    }
+    // Long after a channel fell silent its colour has faded away.
+    if (tx && k) { clearTimeout(k.gasi); } else if (k?.el.classList.contains('slyszany') && !k.gasi) {
+      k.gasi = setTimeout(() => { k.el.classList.remove('slyszany'); k.gasi = 0; }, 60000);
+    }
+  }
+
+  widmo(w, bajty) {
+    const { ctx, wiersz } = this;
+    this.ostatnieWidmo = Date.now();
+    this.brak.style.display = 'none';
+    let podloga, rozpietosc;
+    if (this.auto.checked) {
+      const mediana = Uint8Array.from(bajty).sort()[256] - 8;
+      this.podloga = this.podloga === null ? mediana : this.podloga + (mediana - this.podloga) * 0.05;
+      podloga = this.podloga;
+      rozpietosc = ZAKRES_AUTO * NA_BAJT;
+      // The sliders follow, so turning Auto off starts from what is on the screen.
+      if (!(this.licznik = (this.licznik + 1 || 0) % 10)) {
+        this.podl.value = Math.round(podloga / NA_BAJT - 150);
+        this.podlw.textContent = `${this.podl.value} dB`;
+      }
+    } else {
+      podloga = (+this.podl.value + 150) * NA_BAJT;
+      rozpietosc = +this.rozp.value * NA_BAJT;
+    }
+    const skala = v => Math.max(0, Math.min(255, (v - podloga) * 255 / rozpietosc));
+    // Only part of the window: the middle of it, stretched across the picture.
+    const z = +this.powiek.value, bin = x => bajty[Math.min(511, Math.max(0, Math.round(256 + (x - 256) / z)))];
+
+    // The waterfall moves down a row, the new one goes on top of it.
+    ctx.drawImage(this.canvas, 0, WIDMO_H, 512, 219 - WIDMO_H, 0, WIDMO_H + 1, 512, 219 - WIDMO_H);
+    for (let x = 0; x < 512; x++) {
+      const c = PALETA[Math.round(skala(bin(x)))], o = x * 4;
+      wiersz.data[o] = c[0]; wiersz.data[o + 1] = c[1]; wiersz.data[o + 2] = c[2]; wiersz.data[o + 3] = 255;
+    }
+    ctx.putImageData(wiersz, 0, WIDMO_H);
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 512, WIDMO_H);
+    ctx.strokeStyle = '#6fd3ff';
+    ctx.beginPath();
+    for (let x = 0; x < 512; x++) {
+      const y = WIDMO_H - 1 - skala(bin(x)) * (WIDMO_H - 2) / 255;
+      x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+    if (w.v && w.c && w.s) {
+      const px = hz => 256 + (hz - w.c) * z * 512 / w.s;
+      const x = px(w.v);
+      ctx.strokeStyle = '#ff3b30';
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, WIDMO_H); ctx.stroke();
+      // The filter, as wide as BW says: one side of the dial in SSB, both sides otherwise.
+      // An overlay rather than pixels, or the waterfall would carry it down as streaks.
+      const bw = this.bw || 0;
+      const [lo, hi] = this.tryb === 'USB' ? [w.v, w.v + bw] : this.tryb === 'LSB' ? [w.v - bw, w.v] : [w.v - bw / 2, w.v + bw / 2];
+      const a = Math.max(0, px(lo)), b = Math.min(512, px(hi));
+      this.pasmo.style.display = bw && b > a ? 'block' : 'none';
+      this.pasmo.style.left = `${a / 5.12}%`;
+      this.pasmo.style.width = `${(b - a) / 5.12}%`;
+    } else {
+      this.pasmo.style.display = 'none';
+    }
+    if (w.c && w.s) {
+      this.od.textContent = ((w.c - w.s / 2 / z) / 1e6).toFixed(3);
+      this.srodek.textContent = (w.c / 1e6).toFixed(3) + ' MHz';
+      this.do.textContent = ((w.c + w.s / 2 / z) / 1e6).toFixed(3);
+    }
+  }
+}
+
+const radia = [new Radio(0), new Radio(1)];
+let pokazWidmo = zapisane('widmo', '1') === '1';
+let zrodlo = null, stempel = null, program = false;
+
+function pokazujWidmo() {
+  $('widmo').classList.toggle('wl', pokazWidmo);
+  for (const r of radia) r.widmoEl.style.display = pokazWidmo ? '' : 'none';
+}
+
+async function wczytajKanaly() {
+  try {
+    const o = await fetch('/api/kanaly');
+    if (!o.ok) throw 0;
+    const dane = await o.json();
+    for (const r of radia) r.lista_kanalow(dane);
+  } catch { stempel = null; }
+}
+
+function polacz() {
+  zrodlo?.close();
+  // A page nobody sees costs the PC nothing, and the server stops polling when the last one goes.
+  // Unless its sound or its floating window is on: those go on in the background, without the
+  // spectrum, which nobody can see then.
+  const wTle = dzwiek.wlaczony || okienkoWl || !!document.pictureInPictureElement;
+  if (document.hidden && !wTle) { zrodlo = null; return; }
+  zrodlo = new EventSource(`/api/zdarzenia?widmo=${pokazWidmo && !document.hidden ? 1 : 0}`);
+  zrodlo.onopen = () => { $('blad').style.display = 'none'; };
+  zrodlo.onerror = () => { $('blad').style.display = 'block'; };
+  zrodlo.addEventListener('stan', e => {
+    const s = JSON.parse(e.data);
+    $('blad').style.display = 'none';
+    if (s.kanaly !== stempel) { stempel = s.kanaly; wczytajKanaly(); }
+    s.radia.forEach((x, i) => radia[i].stan(x));
+    $('karta').classList.toggle('cisza', s.karta);
+    kartaWyciszona = s.karta;
+    $('cichy').classList.toggle('wl', !!s.cichy);
+    if (okienkoWl) rysujOkienko();
+    odswiezDzwiek();
+    opiszSesje();
+    $('ekran-lustro').classList.toggle('wl', s.ekran === 'lustro');
+    $('ekran-skaner').classList.toggle('wl', s.ekran === 'skaner');
+    $('ekran-lustro').disabled = $('ekran-skaner').disabled = !s.ekran;
+    program = s.oxide;
+    $('program').textContent = s.oxide ? 'Zamknij' : 'Uruchom';
+    for (const b of ['pokaz-0', 'pokaz-1', 'schowaj']) $(b).disabled = !s.oxide;
+    if (pokazWidmo) for (const r of radia) if (Date.now() - r.ostatnieWidmo > 3000) {
+      r.brak.textContent = s.oxide ? 'Czekam na widmo (serwer TCI tego radia w Oxide)' : 'Oxide nie działa';
+      r.brak.style.display = 'flex';
+    }
+  });
+  zrodlo.addEventListener('widmo', e => {
+    const w = JSON.parse(e.data), b = atob(w.d), bajty = new Uint8Array(b.length);
+    for (let i = 0; i < b.length; i++) bajty[i] = b.charCodeAt(i);
+    if (w.r >= 2) { if (bufor.otwarty && bufor.b === w.r - 2) radia[w.r - 2].widmo(w, bajty); return; }
+    if (bufor.otwarty && bufor.b === w.r) return;
+    radia[w.r].widmo(w, bajty);
+  });
+}
+
+$('ekran-lustro').onclick = () => post('/api/ekran/lustro');
+$('ekran-skaner').onclick = () => post('/api/ekran/skaner');
+$('pokaz-0').onclick = () => post('/api/oxide/pokaz/0');
+$('pokaz-1').onclick = () => post('/api/oxide/pokaz/1');
+$('schowaj').onclick = () => post('/api/oxide/schowaj');
+$('program').onclick = () => {
+  if (!program) post('/api/oxide/uruchom');
+  else if (confirm('Zamknąć program Oxide?')) post('/api/oxide/zamknij');
+};
+$('karta').onclick = () => post('/api/karta');
+
+// Sound in this browser: the raw stream scheduled on the Web Audio clock, a third of a second
+// ahead, so it is heard about as soon as the radio hears it. It comes out through a media
+// element rather than straight to the speaker: a phone keeps a playing media element going in
+// the background and with the screen off, and the floating window plays the same sound.
+// (A plain <audio> on the WAV stream buffered three seconds and more before it played.)
+const dzwiek = {
+  ctx: null, cel: null, el: null, wlaczony: false, nast: 0, przerwij: null,
+  async petla() {
+    // One loop at a time: switched off and on again within the retry pause, the old loop used
+    // to carry on beside the new one and the sound played twice.
+    const gen = this.gen = (this.gen || 0) + 1;
+    while (this.wlaczony && gen === this.gen) {
+      const stop = new AbortController();
+      this.przerwij = stop;
+      try {
+        const o = await fetch('/api/dzwiek', { signal: stop.signal });
+        const czytnik = o.body.getReader();
+        let reszta = new Uint8Array(0);
+        for (;;) {
+          const { value, done } = await czytnik.read();
+          if (done || gen !== this.gen) break;
+          const b = new Uint8Array(reszta.length + value.length);
+          b.set(reszta);
+          b.set(value, reszta.length);
+          if (b.length < 3200) { reszta = b; continue; }
+          const n = b.length >> 1;
+          reszta = b.slice(n * 2);
+          this.graj(new Int16Array(b.buffer, 0, n));
+        }
+      } catch {}
+      if (this.wlaczony && gen === this.gen) await new Promise(r => setTimeout(r, 2000));
+    }
+  },
+  graj(probki) {
+    const buf = this.ctx.createBuffer(1, probki.length, 16000), kan = buf.getChannelData(0);
+    for (let i = 0; i < probki.length; i++) kan[i] = probki[i] / 32768;
+    const zr = this.ctx.createBufferSource();
+    zr.buffer = buf;
+    zr.connect(this.cel);
+    const teraz = this.ctx.currentTime;
+    // Back to a third of a second ahead when it fell behind or ran too far ahead.
+    if (this.nast < teraz + 0.05 || this.nast > teraz + 0.8) this.nast = teraz + 0.3;
+    zr.start(this.nast);
+    this.nast += buf.duration;
+  },
+  wlacz() {
+    if (this.wlaczony) return;
+    // Inside the click: a phone allows sound only from a user's own gesture.
+    this.ctx ??= new (window.AudioContext || window.webkitAudioContext)();
+    this.ctx.resume();
+    if (!this.cel) {
+      this.cel = this.ctx.createMediaStreamDestination();
+      this.el = new Audio();
+      this.el.srcObject = this.cel.stream;
+    }
+    // With the floating window open its video carries the sound, and this one stays quiet.
+    this.el.muted = !!pip.srcObject;
+    this.el.play().catch(() => {});
+    this.wlaczony = true;
+    this.nast = 0;
+    this.petla();
+    sesjaMediow();
+    odswiezDzwiek();
+  },
+  wylacz() {
+    this.wlaczony = false;
+    this.gen = (this.gen || 0) + 1;
+    this.przerwij?.abort();
+    this.el?.pause();
+    odswiezDzwiek();
+  },
+};
+
+// The lock screen's tile: which station is on, and play / pause from there.
+let opisSesji = '';
+function sesjaMediow() {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.setActionHandler('play', () => dzwiek.wlacz());
+  navigator.mediaSession.setActionHandler('pause', () => dzwiek.wylacz());
+  try { navigator.mediaSession.setActionHandler('stop', () => dzwiek.wylacz()); } catch {}
+  opisSesji = '';
+  opiszSesje();
+}
+function opiszSesje() {
+  if (!('mediaSession' in navigator) || !window.MediaMetadata || !dzwiek.wlaczony) return;
+  const r = radia.find(x => x.el.classList.contains('tx')) ?? radia[0];
+  const tytul = `${r.nazwa.textContent} · ${r.czest.textContent}`;
+  if (tytul === opisSesji) return;
+  opisSesji = tytul;
+  navigator.mediaSession.metadata = new MediaMetadata({ title: tytul, artist: 'Skaner SDR', album: r.tytul.textContent });
+}
+
+// Three switches, each its own: sound here, Oxide quiet in the house, the whole card muted.
+let kartaWyciszona = false;
+function odswiezDzwiek() {
+  $('sluchaj').classList.toggle('wl', dzwiek.wlaczony);
+}
+$('sluchaj').onclick = () => dzwiek.wlaczony ? dzwiek.wylacz() : dzwiek.wlacz();
+$('cichy').onclick = () => post('/api/cichy');
+
+// The floating window: browsers lift only video out of the page, so both radios are drawn
+// onto a small canvas and that is the video. It keeps updating over other apps.
+const pip = $('pip'), plotno = Object.assign(document.createElement('canvas'), { width: 400, height: 200 });
+let okienkoCo = 0;
+function rysujOkienko() {
+  const c = plotno.getContext('2d');
+  radia.forEach((r, i) => {
+    const y = i * 100, tx = r.el.classList.contains('tx'), cisza = r.el.classList.contains('cisza');
+    c.fillStyle = cisza ? '#700000' : '#15181d';
+    c.fillRect(0, y, 400, 100);
+    c.fillStyle = tx ? '#35d05a' : '#2a2f37';
+    c.fillRect(0, y, 8, 100);
+    c.fillStyle = tx ? '#ffffff' : '#aeb4bd';
+    c.font = 'bold 40px system-ui, sans-serif';
+    c.fillText(r.nazwa.textContent.slice(0, 12), 20, y + 46, 370);
+    c.font = '600 24px system-ui, sans-serif';
+    c.fillStyle = '#ff3b30';
+    c.fillText(r.czest.textContent, 20, y + 84, 250);
+    c.fillStyle = '#35d05a';
+    c.textAlign = 'right';
+    c.fillText(r.dbm.textContent, 390, y + 84);
+    c.textAlign = 'left';
+  });
+  c.fillStyle = '#2a2f37';
+  c.fillRect(0, 99, 400, 2);
+}
+// Android lifts out only a video that plays sound, so the scanner's sound goes into the same
+// video as the picture of the radios, and the page's own player falls quiet meanwhile: one
+// player, like YouTube's.
+let okienkoWl = false;
+function zDzwiekiem() {
+  const obraz = plotno.captureStream().getVideoTracks();
+  const tory = dzwiek.cel ? dzwiek.cel.stream.getAudioTracks() : [];
+  pip.srcObject = new MediaStream([...obraz, ...tory]);
+  pip.muted = tory.length === 0;
+  if (tory.length && dzwiek.el) dzwiek.el.muted = true;
+}
+// Off only when switched off, or when the page leaves full screen.
+function koniecOkienka() {
+  okienkoWl = false;
+  clearInterval(okienkoCo);
+  pip.classList.remove('czeka');
+  $('okienko').classList.remove('wl');
+  if (dzwiek.el) dzwiek.el.muted = false;
+  pip.pause();
+  pip.srcObject = null;
+  polacz();
+}
+async function otworzOkienko() {
+  rysujOkienko();
+  // A backstop only: the state messages redraw it, and a page in the background gets its
+  // timers slowed to once a second, which is what made the scan look three times slower.
+  clearInterval(okienkoCo);
+  okienkoCo = setInterval(rysujOkienko, 500);
+  if (!pip.srcObject) zDzwiekiem();
+  try {
+    await pip.play();
+  } catch (e) {
+    koniecOkienka();
+    alert('Okienko się nie otworzyło: ' + e.message);
+    return;
+  }
+  // A computer floats it at once. A phone could too, but there the window is wanted only once
+  // the browser is minimised, and a page cannot ask for it on its way out.
+  const telefon = navigator.userAgentData?.mobile ?? /Android|iPhone|iPad/i.test(navigator.userAgent);
+  if ((!telefon || !document.documentElement.requestFullscreen) && document.pictureInPictureEnabled && pip.requestPictureInPicture) {
+    try {
+      await pip.requestPictureInPicture();
+      return;
+    } catch {}
+  }
+  // A phone floats by itself a video that is full screen when the user leaves, and the page
+  // cannot go full screen on its way out. So the whole page goes full screen now, looking as it did, with the radios' video
+  // spread invisibly over the screen beneath it: that counts as the full-screen video, and
+  // only Home or a switch to another app floats it. In the window the page is so small that
+  // the style above shows the video instead.
+  pip.classList.add('czeka');
+  try {
+    // The phone's navigation bar stays: only the status bar and Chrome's address bar go.
+    await document.documentElement.requestFullscreen({ navigationUI: 'show' });
+  } catch (e) {
+    koniecOkienka();
+    alert('Okienko się nie włączyło: ' + e.message);
+  }
+}
+$('okienko').onclick = () => {
+  // On: this touch switches it off.
+  if (okienkoWl || document.pictureInPictureElement) {
+    if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    koniecOkienka();
+    return;
+  }
+  okienkoWl = true;
+  $('okienko').classList.add('wl');
+  // Inside the touch: the sound has to be started by the user's own gesture.
+  if (!dzwiek.wlaczony) dzwiek.wlacz();
+  otworzOkienko();
+};
+document.addEventListener('fullscreenchange', () => {
+  // Out of full screen (the back gesture) the phone would float nothing: the mode is off.
+  if (!document.fullscreenElement && pip.classList.contains('czeka')) koniecOkienka();
+  else polacz();
+});
+pip.addEventListener('enterpictureinpicture', () => {
+  okienkoWl = true;
+  $('okienko').classList.add('wl');
+});
+// A window opened through the API closes on the return to the page, and the mode with it.
+pip.addEventListener('leavepictureinpicture', () => pip.classList.contains('czeka') ? polacz() : koniecOkienka());
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
+});
+$('widmo').onclick = () => { pokazWidmo = !pokazWidmo; zapisz('widmo', pokazWidmo ? '1' : '0'); pokazujWidmo(); polacz(); };
+// The I/Q buffer strip in a receiver's card, right above its spectrum, as in Oxide's playback tab.
+// Open, it plays that receiver's buffer here and the card's waterfall shows the buffer; the
+// playback runs only while a strip is open: closing it, the page or the connection lets the server
+// switch the playback off (and Oxide stops it by itself 15 s after the server last asked).
+const bufor = {
+  b: 0, otwarty: false, stan: null, timer: null, os: null, osTimer: null, ciagnie: null, nad: null, przewinDo: null,
+  ctx: null, cel: null, el: null, nast: 0, przerwij: null, zywy: false,
+  get karta() { return radia[this.b]; },
+  async petla() {
+    // One loop at a time: a strip closed and opened again (or switched to the other receiver)
+    // within the retry pause used to leave the old loop running too, and the sound played twice.
+    const gen = this.gen = (this.gen || 0) + 1;
+    while (this.otwarty && gen === this.gen) {
+      const stop = new AbortController();
+      this.przerwij = stop;
+      try {
+        const o = await fetch('/api/bufor/dzwiek?b=' + this.b, { signal: stop.signal });
+        const czytnik = o.body.getReader();
+        let reszta = new Uint8Array(0);
+        for (;;) {
+          const { value, done } = await czytnik.read();
+          if (done || gen !== this.gen) break;
+          const b = new Uint8Array(reszta.length + value.length);
+          b.set(reszta);
+          b.set(value, reszta.length);
+          if (b.length < 3200) { reszta = b; continue; }
+          const n = b.length >> 1;
+          reszta = b.slice(n * 2);
+          this.graj(new Int16Array(b.buffer, 0, n));
+        }
+      } catch {}
+      if (this.otwarty && gen === this.gen) await new Promise(r => setTimeout(r, 1500));
+    }
+  },
+  graj(probki) {
+    const buf = this.ctx.createBuffer(1, probki.length, 16000), kan = buf.getChannelData(0);
+    for (let i = 0; i < probki.length; i++) kan[i] = probki[i] / 32768;
+    const zr = this.ctx.createBufferSource();
+    zr.buffer = buf;
+    zr.connect(this.cel);
+    const teraz = this.ctx.currentTime;
+    if (this.nast < teraz + 0.05 || this.nast > teraz + 0.8) this.nast = teraz + 0.3;
+    zr.start(this.nast);
+    this.nast += buf.duration;
+  },
+  wyczyscWidmo(k) {
+    // The live waterfall and the buffer's do not belong in one picture.
+    k.ctx.fillStyle = '#000';
+    k.ctx.fillRect(0, 0, 512, 220);
+  },
+  otworz(b) {
+    if (this.otwarty) this.zamknij();
+    this.b = b;
+    // The live sound makes way while the buffer plays, and comes back when the strip closes.
+    this.zywy = dzwiek.wlaczony;
+    if (this.zywy) dzwiek.wylacz();
+    this.ctx ??= new (window.AudioContext || window.webkitAudioContext)();
+    this.ctx.resume();
+    if (!this.cel) {
+      this.cel = this.ctx.createMediaStreamDestination();
+      this.el = new Audio();
+      this.el.srcObject = this.cel.stream;
+    }
+    this.el.play().catch(() => {});
+    this.otwarty = true;
+    this.nast = 0;
+    const k = this.karta;
+    k.bster.hidden = false;
+    k.bufor.classList.add('otwarty');
+    k.bpasek.textContent = '⏪ BUFOR I/Q ▾  (wodospad z bufora)';
+    this.wyczyscWidmo(k);
+    this.petla();
+    this.odswiez();
+    this.timer = setInterval(() => this.odswiez(), 1000);
+    this.os = null;
+    this.listaKlucz = null;
+    this.wczytajOs();
+    this.osTimer = setInterval(() => this.wczytajOs(), 10000);
+  },
+  zamknij() {
+    if (!this.otwarty) return;
+    this.otwarty = false;
+    this.gen = (this.gen || 0) + 1;
+    this.przerwij?.abort();
+    this.el?.pause();
+    clearInterval(this.timer);
+    clearInterval(this.osTimer);
+    const k = this.karta;
+    k.bster.hidden = true;
+    k.bufor.classList.remove('otwarty');
+    k.bpasek.textContent = '⏪ BUFOR I/Q ▸';
+    this.wyczyscWidmo(k);
+    if (this.zywy) dzwiek.wlacz();
+  },
+  async odswiez() {
+    const b = this.b;
+    let s = null;
+    try { s = await (await fetch('/api/bufor/stan?b=' + b)).json(); } catch {}
+    if (!this.otwarty || b !== this.b) return;
+    this.stan = s;
+    // The timeline arrives once the player answers; until then asked again every refresh.
+    if (s?.ok && !this.os && !this.osLaduje) this.wczytajOs();
+    this.rysuj();
+  },
+  rysuj() {
+    const s = this.stan, k = this.karta;
+    if (!s || !s.ok) {
+      k.bczas.textContent = 'uruchamiam odtwarzacz…';
+      k.bza.textContent = 'Oxide włącza odtwarzacz bufora (kilka sekund)';
+      k.bczest.textContent = '';
+      k.blista.replaceChildren();
+      this.listaKlucz = null;
+      return;
+    }
+    k.bczas.textContent = new Date(s.at * 1000).toLocaleTimeString('pl-PL');
+    k.bza.textContent = (s.behind < 4 ? 'na żywo' : 'za na żywo: ' + czasTekst(s.behind)) + (s.paused ? ' · pauza' : '');
+    k.bczest.textContent = s.hz ? (s.hz / 1e6).toFixed(4) + ' MHz' : '';
+    k.bpauza.textContent = s.paused ? '▶ Graj' : '⏸ Pauza';
+    this.rysujOs();
+    const w = this.okno();
+    const naOsi = this.transmisje().filter(m => !w || (m.e >= w[0] && m.s <= w[1]));
+    // One mark only, a frame, where the timeline's line is: the transmission playing, or between
+    // transmissions the nearest one; right after a click on the timeline, the one nearest the click.
+    const ref = this.przewinDo ?? s.at;
+    let zaznS = null, odl = Infinity;
+    for (const m of naOsi) {
+      const o = ref < m.s ? m.s - ref : ref > m.e ? ref - m.e : 0;
+      if (o <= odl) { odl = o; zaznS = m.s; }
+    }
+    // Rebuilt only when it changes: a day on 2 m is thousands of rows.
+    const klucz = `${this.b}|${w ? Math.round(w[0] / 10) : 0}|${w ? Math.round(w[1] / 10) : 0}|${naOsi.length}|${zaznS}`;
+    if (klucz === this.listaKlucz) { this.przewin(k); return; }
+    this.listaKlucz = klucz;
+    const wiersze = naOsi.slice(-3000).reverse().map(m => {
+      const d = document.createElement('div');
+      const godz = document.createElement('b');
+      godz.textContent = new Date(m.s * 1000).toLocaleTimeString('pl-PL');
+      const dl = document.createElement('span');
+      dl.textContent = Math.max(1, Math.round(m.e - m.s)) + ' s';
+      const opis = document.createElement('i');
+      opis.textContent = (m.n ? m.n + ' · ' : '') + (m.hz / 1e6).toFixed(4) + ' MHz';
+      opis.style.color = this.kolor(m.n);
+      d.append(godz, dl, opis);
+      d.dataset.s = m.s;
+      if (m.s === zaznS) d.classList.add('wskazany');
+      d.onclick = () => { this.przewinDo = m.s; this.wyslij('seek/' + m.s); };
+      return d;
+    });
+    k.blista.replaceChildren(...wiersze);
+    this.przewin(k);
+  },
+  // The framed row kept in sight: centred after a click on the timeline (or on a row), otherwise
+  // brought into view only when the frame moves to another transmission.
+  przewin(k) {
+    const d = k.blista.querySelector('.wskazany');
+    const s = d ? +d.dataset.s : null;
+    const nowy = s !== this.zaznPrev;
+    this.zaznPrev = s;
+    if (!d) { this.przewinDo = null; return; }
+    const g = k.blista, gora = d.offsetTop, dol = gora + d.offsetHeight;
+    if (this.przewinDo != null) {
+      this.przewinDo = null;
+      g.scrollTop = gora - g.clientHeight / 2 + d.offsetHeight / 2;
+    } else if (nowy && (gora < g.scrollTop || dol > g.scrollTop + g.clientHeight)) {
+      g.scrollTop = gora - g.clientHeight / 2 + d.offsetHeight / 2;
+    }
+  },
+  async wczytajOs() {
+    const b = this.b;
+    let o = null;
+    this.osLaduje = true;
+    try { o = await (await fetch('/api/bufor/os?b=' + b)).json(); } catch {}
+    this.osLaduje = false;
+    if (!this.otwarty || b !== this.b || !o?.ok) return;
+    this.os = o;
+    this.rysuj();
+  },
+  // The window the timeline shows: the whole buffer, or a span around the playing position.
+  okno() {
+    const s = this.stan, o = this.os;
+    if (!s?.ok) return null;
+    const od = s.oldest, zywo = s.oldest + s.total, z = +this.karta.bzakres.value;
+    if (!z || z >= zywo - od) return [od, zywo];
+    // Held still while dragging, or it would move under the pointer.
+    if (this.ciagnie != null && this.oknoStale) return this.oknoStale;
+    const srodek = s.at;
+    let w1 = Math.min(zywo, srodek + z / 2), w0 = w1 - z;
+    if (w0 < od) { w0 = od; w1 = od + z; }
+    return [w0, w1];
+  },
+  kolor(n) {
+    let h = 0;
+    for (const c of n || '?') h = (h * 31 + c.charCodeAt(0)) % 360;
+    return `hsl(${h},85%,55%)`;
+  },
+  transmisje() {
+    const o = this.os;
+    if (!o) return (this.stan?.marks || []).map(m => ({ s: m.s, e: m.e, hz: m.hz, n: m.n }));
+    return o.m.map(([s, e, hz, n]) => ({ s, e, hz, n: o.names[n] }));
+  },
+  rysujOs() {
+    const k = this.karta, c = k.bosc, w = this.okno();
+    if (!w) return;
+    const dpr = window.devicePixelRatio || 1, W = Math.max(100, Math.round(c.clientWidth * dpr)), H = Math.round(52 * dpr);
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    const g = c.getContext('2d'), [w0, w1] = w, x = t => (t - w0) / (w1 - w0) * W;
+    g.fillStyle = '#111';
+    g.fillRect(0, 0, W, H);
+    // Ticks: every hour, 10 minutes or minute, whichever gives a few.
+    const krok = [60, 600, 3600, 6 * 3600].find(k2 => (w1 - w0) / k2 <= 12) || 6 * 3600;
+    g.fillStyle = '#333';
+    for (let t = Math.ceil(w0 / krok) * krok; t < w1; t += krok) g.fillRect(Math.round(x(t)), 0, 1, H);
+    const lista = this.transmisje().filter(m => m.e >= w0 && m.s <= w1);
+    g.font = `${11 * dpr}px system-ui`;
+    for (const m of lista) {
+      const a = x(m.s), b = Math.max(a + 2 * dpr, x(m.e));
+      g.fillStyle = this.kolor(m.n);
+      g.fillRect(a, 14 * dpr, b - a, H - 22 * dpr);
+      if (b - a > 60 * dpr && m.n) {
+        g.fillStyle = '#000';
+        g.fillText(m.n, a + 3 * dpr, H - 12 * dpr, b - a - 6 * dpr);
+      }
+    }
+    const s = this.stan;
+    // The playing position, and where a drag would take it.
+    g.fillStyle = '#fff';
+    g.fillRect(Math.round(x(s.at)) - dpr, 0, 2 * dpr, H);
+    if (this.ciagnie != null) {
+      g.fillStyle = '#ffb74d';
+      g.fillRect(Math.round(x(this.ciagnie)) - dpr, 0, 2 * dpr, H);
+    }
+    const godz = t => new Date(t * 1000).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit', second: (w1 - w0) <= 3600 ? '2-digit' : undefined });
+    k.bod.textContent = godz(w0);
+    k.bdo.textContent = w1 >= s.oldest + s.total - 2 ? 'na żywo' : godz(w1);
+  },
+  // What is under the pointer, in words.
+  opisz(t) {
+    const m = this.transmisje().find(m => t >= m.s - 1 && t <= m.e + 1);
+    const g = new Date(t * 1000).toLocaleTimeString('pl-PL');
+    this.karta.bpod.textContent = m
+      ? `${new Date(m.s * 1000).toLocaleTimeString('pl-PL')} · ${Math.max(1, Math.round(m.e - m.s))} s · ${m.n || 'bez nazwy'} · ${(m.hz / 1e6).toFixed(4)} MHz`
+      : `${g} · bez transmisji`;
+  },
+  czasZ(e) {
+    const c = this.karta.bosc, r = c.getBoundingClientRect(), w = this.okno();
+    if (!w) return null;
+    const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    return w[0] + f * (w[1] - w[0]);
+  },
+  async wyslij(cmd) {
+    try { await fetch('/api/bufor/' + this.b + '/' + cmd, { method: 'POST' }); } catch {}
+    this.nast = 0;
+    setTimeout(() => this.odswiez(), 250);
+  },
+};
+function czasTekst(s) {
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ' h ' : '') + (h || m ? m + ' min ' : '') + x + ' s';
+}
+radia.forEach((k, i) => {
+  k.bpasek.onclick = () => bufor.otwarty && bufor.b === i ? bufor.zamknij() : bufor.otworz(i);
+  k.bpauza.onclick = () => bufor.wyslij(bufor.stan?.paused ? 'play' : 'pause');
+  k.bster.querySelectorAll('[data-k]').forEach(x => x.onclick = () => bufor.wyslij(x.dataset.k));
+  k.bzakres.onchange = () => bufor.rysuj();
+  k.bosc.onpointerdown = e => {
+    if (!bufor.otwarty || bufor.b !== i) return;
+    k.bosc.setPointerCapture(e.pointerId);
+    bufor.oknoStale = bufor.okno();
+    bufor.ciagnie = bufor.czasZ(e);
+    bufor.opisz(bufor.ciagnie);
+    bufor.rysujOs();
+  };
+  k.bosc.onpointermove = e => {
+    if (!bufor.otwarty || bufor.b !== i) return;
+    const t = bufor.czasZ(e);
+    if (t == null) return;
+    if (bufor.ciagnie != null) { bufor.ciagnie = t; bufor.rysujOs(); }
+    bufor.opisz(t);
+  };
+  k.bosc.onpointerup = e => {
+    if (bufor.ciagnie == null) return;
+    const t = bufor.ciagnie;
+    bufor.ciagnie = null;
+    bufor.oknoStale = null;
+    bufor.przewinDo = t;
+    bufor.wyslij('seek/' + t.toFixed(1));
+  };
+  k.bosc.onpointercancel = () => { bufor.ciagnie = null; bufor.oknoStale = null; bufor.rysujOs(); };
+  k.bosc.onpointerleave = () => { if (bufor.ciagnie == null && bufor.otwarty && bufor.b === i) bufor.karta.bpod.textContent = ''; };
+});
+window.addEventListener('pagehide', () => bufor.zamknij());
+
+document.addEventListener('visibilitychange', polacz);
+pokazujWidmo();
+polacz();
+</script>
+</body></html>
